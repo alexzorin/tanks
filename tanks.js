@@ -44,11 +44,10 @@ Q.component("TankControls", {
 			var deg = normalizeAngle(Math.atan2(deltaX, deltaY) * (180 / Math.PI));
 			var gunDeg = normalizeAngle(normalizeAngle(deg - p.angle) - tank.gun.p.angle);
 			if(gunDeg <= 5) {
-
 			} else if(gunDeg >= 180) {
-				tank.rotateGun(tank.getTraverse() * -1);
+				tank.rotateGun(tank.getTurretTraverse() * -1);
 			} else {
-				tank.rotateGun(tank.getTraverse());
+				tank.rotateGun(tank.getTurretTraverse());
 			}
 		}
 		// console.log("HULL ANGLE: " + p.angle);
@@ -124,10 +123,8 @@ Q.Sprite.extend("PlayerTank", {
 		this.add("2d, TankControls");
 	},
 	rotate: function(deg) {
-		// Rotate the tank
+		// Rotate the tank, turret rotates relative to hull by itself
 		this.p.angle = normalizeAngle(this.p.angle + deg);
-		// and the turret needs to rotate with the hull too
-		// this.rotateGun(deg);
 		// and apply speed penalty for hull traverse
 		this.decellerate();
 	},
@@ -149,7 +146,7 @@ Q.Sprite.extend("PlayerTank", {
 		return 1 + ((this.getCurrentSpeed() / this.getTopSpeed()) / 2);
 	},
 	getTurretTraverse: function() {
-		return this.getTraverse() * 1.5;
+		return 0.75;
 	},
 	accelerate: function() {
 		this.p.vx = this.p.vy = Math.min(this.getTopSpeed(), this.p.vx + 0.075);
