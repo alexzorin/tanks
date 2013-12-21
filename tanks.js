@@ -36,6 +36,26 @@ Q.component("TankControls", {
 			tank.rotate(Q.inputs["down"] ? -tank.getTraverse() : tank.getTraverse());
 		}
 
+		// Traverse the turret based on mouse
+		if(tank.aim.x !== 0 && tank.aim.y !== 0) {
+			var x = Q.canvasToStageX(tank.aim.x, Q.stage(0));
+			var y = Q.canvasToStageY(tank.aim.y, Q.stage(0));
+			var deltaX = x - p.x, deltaY = -(y - p.y);
+			var deg = normalizeAngle(Math.atan2(deltaX, deltaY) * (180 / Math.PI));
+			var gunDeg = normalizeAngle(normalizeAngle(deg - p.angle) - tank.gun.p.angle);
+			if(gunDeg <= 5) {
+
+			} else if(gunDeg >= 180) {
+				tank.rotateGun(tank.getTraverse() * -1);
+			} else {
+				tank.rotateGun(tank.getTraverse());
+			}
+		}
+		// console.log("HULL ANGLE: " + p.angle);
+		// console.log("TURRET ANGLE: " + player.gun.p.angle);
+		// console.log("COMBINED ANGLE: " + normalizeAngle(p.angle + player.gun.p.angle));
+		// console.log("AIM ANGLE: " + gunDeg);
+
 		// Don't accept input if waiting
 		if(p.stepWait > 0) { return; }
 
@@ -85,7 +105,7 @@ Q.component("TankControls", {
 
 function normalizeAngle(deg) {
 	if(deg <= 0) {
-		return 360 - deg;
+		return 360 + deg;
 	} else if(deg > 360) {
 		return deg - 360;
 	} else {
@@ -100,15 +120,16 @@ Q.Sprite.extend("PlayerTank", {
 			collisionMask: Q.SPRITE_NONE,
 			type: Q.SPRITE_PLAYER
 		});
+		this.aim = {x:0, y:0};
 		this.add("2d, TankControls");
-		// Q.input.on("left", this, "gunLeft");
-		// Q.input.on("right", this, "gunRight");
 	},
 	rotate: function(deg) {
 		// Rotate the tank
 		this.p.angle = normalizeAngle(this.p.angle + deg);
+		// and the turret needs to rotate with the hull too
+		// this.rotateGun(deg);
+		// and apply speed penalty for hull traverse
 		this.decellerate();
-		// and the turret rotates with the hull I suppose
 	},
 	setGun: function(gun) {
 		this.gun = gun;
@@ -127,11 +148,17 @@ Q.Sprite.extend("PlayerTank", {
 	getTraverse: function() {
 		return 1 + ((this.getCurrentSpeed() / this.getTopSpeed()) / 2);
 	},
+	getTurretTraverse: function() {
+		return this.getTraverse() * 1.5;
+	},
 	accelerate: function() {
 		this.p.vx = this.p.vy = Math.min(this.getTopSpeed(), this.p.vx + 0.075);
 	},
 	decellerate: function() {
 		this.p.vx = this.p.vy = Math.max(0, this.p.vx - (0.025 * (this.getCurrentSpeed() / this.getTopSpeed())));
+	},
+	setGunAim: function(x,y) {
+		this.aim = {x: x, y: y};
 	}
 });
 
@@ -140,12 +167,13 @@ Q.Sprite.extend("TankGun", {
 		this._super({
 			asset: "gun.png",
 			collisionMask: Q.SPRITE_NONE,
-			type: Q.SPRITE_PLAYER
+			type: Q.SPRITE_PLAYER,
+			cy: 55
 		});
-		this.p.cy = 55;
 	},
 	rotate: function(deg) {
 		this.p.angle = normalizeAngle(this.p.angle + deg);
+		// console.log("gun rotated to " + this.p.angle + " relative to hull");
 	}
 });
 
@@ -158,16 +186,17 @@ Q.scene("battle", function(stage) {
 	player.setGun(playerGun);
 	stage.add("viewport");
 	stage.follow(player);
+	Q.el.addEventListener("mousemove", function(e) {
+		var x = e.offsetX || e.layerX, y = e.offsetY || e.layerY;
+		player.setGunAim(x, y);
+	});
 });
 
 Q.load(["tank_base.png", "gun.png", "tiles.png"], function() {
 	Q.gravityY = 0;
-	// Q.debug = true;
+	Q.debug = true;
 	Q.input.keyboardControls({
 		87: "up", 65:"left", 83: "down",  68: "right"
-	});
-	Q.input.on("mouseMove", function(mm) {
-		console.log("mouse");
 	});
 	Q.stageScene("battle");
 });
